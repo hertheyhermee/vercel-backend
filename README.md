@@ -33,19 +33,19 @@ A serverless API for managing user profiles with external API integrations, depl
 
 ### Create Profile
 ```bash
-curl -X POST https://your-app.vercel.app/api/profiles \
+curl -X POST https://https://vercel-backend-taupe-nine.vercel.app/api/profiles \
   -H "Content-Type: application/json" \
   -d '{"name": "ella"}'
 ```
 
 ### Get All Profiles
 ```bash
-curl https://your-app.vercel.app/api/profiles
+curl https://https://vercel-backend-taupe-nine.vercel.app/api/profiles
 ```
 
 ### Get Single Profile
 ```bash
-curl https://your-app.vercel.app/api/profiles/some-uuid-here
+curl https://https://vercel-backend-taupe-nine.vercel.app/api/profiles/019d92d7-2528-7066-967a-7936619e36fb
 ```
 
 ## Deployment
