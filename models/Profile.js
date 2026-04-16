@@ -19,7 +19,7 @@ const profileSchema = new mongoose.Schema(
     gender: {
       type: String,
       required: true,
-      enum: ['male', 'female', 'unknown'],
+      enum: ['male', 'female'],
     },
     gender_probability: {
       type: Number,
@@ -40,7 +40,7 @@ const profileSchema = new mongoose.Schema(
     age_group: {
       type: String,
       required: true,
-      enum: ['child', 'teenager', 'adult', 'senior', 'unknown'],
+      enum: ['child', 'teenager', 'adult', 'senior'],
     },
     country_id: {
       type: String,
