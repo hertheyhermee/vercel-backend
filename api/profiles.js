@@ -143,36 +143,51 @@ export const createProfile = async (name) => {
 
   const { genderRes, ageRes, nationRes } = await fetchUserData(normalizedName);
 
-  if (!genderRes?.data?.gender || genderRes.data.count === 0) {
-    throw new ApiError(502, 'Genderize returned an invalid response');
-  }
-
+  // Handle cases where APIs return uncertain or no data
+  const gender = genderRes?.data?.gender;
+  const genderProbability = genderRes?.data?.probability || 0;
+  const sampleSize = genderRes?.data?.count || 0;
+  
   const age = ageRes?.data?.age;
-  if (age === null || age === undefined) {
-    throw new ApiError(502, 'Agify returned an invalid response');
+  
+  let countryId = null;
+  let countryProbability = 0;
+  
+  if (nationRes?.data?.country && Array.isArray(nationRes.data.country) && nationRes.data.country.length > 0) {
+    const topCountry = nationRes.data.country.reduce((prev, curr) =>
+      curr.probability > prev.probability ? curr : prev
+    );
+    countryId = topCountry.country_id;
+    countryProbability = topCountry.probability;
   }
 
-  const topCountry = getTopCountry(nationRes?.data?.country);
-  if (!topCountry?.country_id || topCountry.probability === undefined) {
-    throw new ApiError(502, 'Nationalize returned an invalid response');
-  }
+  // For edge cases with low confidence, still create the profile but mark as not confident
+  const isConfident = genderProbability > 0.8 && countryProbability > 0.5 && age !== null && age !== undefined;
 
   const profile = await Profile.create({
     id: uuidv7(),
     name: normalizedName,
-    gender: genderRes.data.gender,
-    gender_probability: genderRes.data.probability,
-    sample_size: genderRes.data.count,
-    age,
-    age_group: getAgeGroup(age),
-    country_id: topCountry.country_id,
-    country_probability: topCountry.probability,
+    gender: gender || 'unknown',
+    gender_probability: genderProbability,
+    sample_size: sampleSize,
+    age: age || 0,
+    age_group: age ? getAgeGroup(age) : 'unknown',
+    country_id: countryId || 'unknown',
+    country_probability: countryProbability,
     created_at: new Date().toISOString(),
   });
 
   return {
     status: 'success',
-    data: profile,
+    data: {
+      id: profile.id,
+      name: profile.name,
+      gender: profile.gender,
+      age: profile.age,
+      nationality: profile.country_id,
+      is_confident: isConfident,
+      created_at: profile.created_at,
+    },
   };
 };
 
@@ -184,9 +199,20 @@ export const getProfile = async (id) => {
     throw new ApiError(404, 'Profile not found');
   }
 
+  // Determine confidence based on stored probabilities
+  const isConfident = profile.gender_probability > 0.8 && profile.country_probability > 0.5;
+
   return {
     status: 'success',
-    data: profile,
+    data: {
+      id: profile.id,
+      name: profile.name,
+      gender: profile.gender,
+      age: profile.age,
+      nationality: profile.country_id,
+      is_confident: isConfident,
+      created_at: profile.created_at,
+    },
   };
 };
 
@@ -207,13 +233,24 @@ export const getProfiles = async (query) => {
   }
 
   const profiles = await Profile.find(filters)
-    .select('id name gender age age_group country_id -_id')
+    .select('id name gender age country_id gender_probability country_probability created_at -_id')
     .lean();
+
+  // Transform profiles to include is_confident
+  const transformedProfiles = profiles.map(profile => ({
+    id: profile.id,
+    name: profile.name,
+    gender: profile.gender,
+    age: profile.age,
+    nationality: profile.country_id,
+    is_confident: profile.gender_probability > 0.8 && profile.country_probability > 0.5,
+    created_at: profile.created_at,
+  }));
 
   return {
     status: 'success',
-    count: profiles.length,
-    data: profiles,
+    count: transformedProfiles.length,
+    data: transformedProfiles,
   };
 };
 
@@ -229,6 +266,16 @@ export const deleteProfile = async (id) => {
 };
 
 export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   try {
     const { id } = req.query;
 
