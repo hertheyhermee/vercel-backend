@@ -1,0 +1,21 @@
+{
+  "name": "vercel-backend",
+  "version": "1.0.0",
+  "description": "HNG Backend Stage 1 - Vercel Deployment",
+  "main": "api/profiles.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev",
+    "local": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.4.1",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  }
+}
